@@ -18,6 +18,41 @@
       default: "INFO"
     }
   },
+  a2a: {
+    protocol_version: "1.0.0",
+    format: "json",
+    inputs: {
+      tasks: {
+        type: "array",
+        description: "Assessment tasks to process",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            question: { type: "string" },
+            documents: { type: "array", items: { type: "string" } },
+            type: { type: "string" }
+          }
+        }
+      }
+    },
+    outputs: {
+      status: { type: "string" },
+      participant_id: { type: "string" },
+      results: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            task_id: { type: "string" },
+            answer: { type: "string" },
+            confidence: { type: "number" },
+            reasoning: { type: "string" }
+          }
+        }
+      }
+    }
+  },
   capabilities: {
     document_retrieval: true,
     value_extraction: true,
