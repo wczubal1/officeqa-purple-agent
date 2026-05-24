@@ -13,10 +13,11 @@ from .officeqa_agent import OfficeQAAgent
 # Load environment variables
 load_dotenv()
 
-# Configure logging
+# Configure logging to use stderr, not stdout
 logging.basicConfig(
     level=os.getenv("AGENT_LOG_LEVEL", "INFO"),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stderr,
 )
 logger = logging.getLogger(__name__)
 
