@@ -4,16 +4,15 @@ import argparse
 import json
 import logging
 import os
-from typing import Any
 
 import uvicorn
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.events import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore, TaskUpdater
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill, Part, Task, TaskState, TextPart
-from a2a.utils import get_message_text, new_agent_text_message, new_task
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+from a2a.utils import new_agent_text_message
 from dotenv import load_dotenv
 
 from .llm_client import LLMClient
@@ -27,13 +26,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TERMINAL_STATES = {
-    TaskState.completed,
-    TaskState.canceled,
-    TaskState.failed,
-    TaskState.rejected,
-}
-
 
 class OfficeQAExecutor(AgentExecutor):
     """A2A executor that turns incoming text into OfficeQA responses."""
@@ -42,42 +34,21 @@ class OfficeQAExecutor(AgentExecutor):
         self.agent = OfficeQAAgent(LLMClient())
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
-        message = context.message
-        if not message:
-            raise ValueError("Missing message in request")
+        user_input = context.get_user_input()
+        if not user_input.strip():
+            raise ValueError("Empty request")
 
-        task = self._ensure_task(context.current_task, message)
-        await event_queue.enqueue_event(task)
-
-        updater = TaskUpdater(event_queue, task.id, task.context_id)
-        await updater.start_work()
-
-        try:
-            response_text = self._handle_message(get_message_text(message) or "")
-            await updater.add_artifact(
-                parts=[Part(root=TextPart(text=response_text))],
-                name="officeqa-response",
+        response_text = self._handle_message(user_input)
+        await event_queue.enqueue_event(
+            new_agent_text_message(
+                response_text,
+                context_id=context.context_id,
+                task_id=context.task_id,
             )
-            await updater.complete()
-        except Exception as exc:
-            logger.exception("Task failed")
-            await updater.failed(
-                new_agent_text_message(
-                    f"Agent error: {exc}",
-                    context_id=task.context_id,
-                    task_id=task.id,
-                )
-            )
+        )
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         raise NotImplementedError("Cancel is not supported")
-
-    def _ensure_task(self, task: Task | None, message: Any) -> Task:
-        if task and task.status.state in TERMINAL_STATES:
-            raise ValueError(f"Task {task.id} already completed")
-        if task:
-            return task
-        return new_task(message)
 
     def _handle_message(self, raw_text: str) -> str:
         raw_text = raw_text.strip()
@@ -87,31 +58,25 @@ class OfficeQAExecutor(AgentExecutor):
         try:
             request = json.loads(raw_text)
         except json.JSONDecodeError:
-            answer = self.agent.process_task(
+            return self.agent.process_task(
                 task_id="message",
                 question=raw_text,
                 documents=[],
                 task_type="qa",
-            )
-            return answer.answer
+            ).answer
 
         if isinstance(request, dict) and "tasks" in request:
-            return json.dumps(self._handle_assessment_request(request))
+            results = self._handle_assessment_request(request).get("results", [])
+            if len(results) == 1:
+                return str(results[0].get("answer", ""))
+            return json.dumps(results)
 
-        answer = self.agent.process_task(
+        return self.agent.process_task(
             task_id=request.get("id", "message") if isinstance(request, dict) else "message",
             question=request.get("question", raw_text) if isinstance(request, dict) else raw_text,
             documents=request.get("documents", []) if isinstance(request, dict) else [],
             task_type=request.get("type", "qa") if isinstance(request, dict) else "qa",
-        )
-        return json.dumps(
-            {
-                "task_id": answer.task_id,
-                "answer": answer.answer,
-                "confidence": answer.confidence,
-                "reasoning": answer.reasoning,
-            }
-        )
+        ).answer
 
     def _handle_assessment_request(self, request: dict[str, Any]) -> dict[str, Any]:
         tasks = request.get("tasks", [])
@@ -145,8 +110,8 @@ def build_agent_card(card_url: str) -> AgentCard:
         description="Purple agent for the OfficeQA benchmark.",
         url=card_url,
         version="1.0.0",
-        default_input_modes=["text"],
-        default_output_modes=["text"],
+        default_input_modes=["text/plain"],
+        default_output_modes=["text/plain"],
         capabilities=AgentCapabilities(streaming=False),
         skills=[skill],
     )

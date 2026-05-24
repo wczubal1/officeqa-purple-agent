@@ -1,7 +1,6 @@
 """Core OfficeQA purple agent implementation."""
 
 import logging
-import json
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 from .llm_client import LLMClient
@@ -91,6 +90,15 @@ class OfficeQAAgent:
 
     def _handle_qa(self, question: str, context: str) -> str:
         """Handle general Q&A tasks."""
+        if not context.strip():
+            prompt = f"""Answer the following OfficeQA question as accurately as possible.
+
+Return only the final answer with no explanation.
+
+Question: {question}
+
+Answer:"""
+            return self.llm_client.answer_prompt(prompt)
         return self.llm_client.extract_answer(question, context)
 
     def _handle_extraction(self, question: str, context: str) -> str:

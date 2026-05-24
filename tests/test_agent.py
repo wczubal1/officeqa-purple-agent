@@ -1,7 +1,12 @@
 """Tests for the OfficeQA agent."""
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+from a2a.utils import get_message_text
+
 from src.agent.llm_client import LLMClient
+from src.agent.main import OfficeQAExecutor
 from src.agent.officeqa_agent import OfficeQAAgent
 
 
@@ -110,3 +115,60 @@ class TestOfficeQAAgent:
         assert len(agent.results) == 1
         agent.clear_results()
         assert len(agent.results) == 0
+
+    def test_process_task_without_context_uses_plain_prompt(self, mock_llm_client):
+        """Test that plain text prompts can be answered without documents."""
+        agent = OfficeQAAgent(mock_llm_client)
+
+        result = agent.process_task(
+            task_id="test_3",
+            question="What is 2 + 2?",
+            documents=[],
+            task_type="qa",
+        )
+
+        assert result.answer == "Mock answer"
+
+
+class TestOfficeQAExecutor:
+    """Protocol-level tests for the A2A executor."""
+
+    @pytest.fixture
+    def mock_llm_client(self):
+        class MockLLMClient:
+            def query(self, *args, **kwargs):
+                return "Mock answer"
+
+            def extract_answer(self, *args, **kwargs):
+                return "Mock extracted answer"
+
+            def answer_prompt(self, *args, **kwargs):
+                return "Plain text answer"
+
+        return MockLLMClient()
+
+    def test_handle_message_plain_text_returns_plain_text(self, mock_llm_client):
+        executor = OfficeQAExecutor()
+        executor.agent = OfficeQAAgent(mock_llm_client)
+
+        result = executor._handle_message("What is the answer?")
+
+        assert result == "Plain text answer"
+
+    @pytest.mark.asyncio
+    async def test_execute_enqueues_agent_message(self, mock_llm_client):
+        executor = OfficeQAExecutor()
+        executor.agent = OfficeQAAgent(mock_llm_client)
+
+        context = MagicMock()
+        context.get_user_input.return_value = "What is the answer?"
+        context.context_id = "ctx1"
+        context.task_id = "task1"
+
+        event_queue = AsyncMock()
+
+        await executor.execute(context, event_queue)
+
+        event_queue.enqueue_event.assert_called_once()
+        message = event_queue.enqueue_event.call_args.args[0]
+        assert get_message_text(message) == "Plain text answer"

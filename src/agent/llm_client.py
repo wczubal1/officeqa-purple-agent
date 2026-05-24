@@ -14,7 +14,7 @@ class LLMClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "gpt-4",
+        model: Optional[str] = None,
     ):
         """
         Initialize the LLM client.
@@ -28,7 +28,7 @@ class LLMClient:
             raise ValueError("OPENAI_API_KEY environment variable or api_key parameter required")
 
         self.client = OpenAI(api_key=self.api_key)
-        self.model = model
+        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4.1")
 
     def query(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
         """
@@ -81,6 +81,10 @@ Question: {question}
 Answer:"""
 
         return self.query(prompt, max_tokens=500)
+
+    def answer_prompt(self, prompt: str) -> str:
+        """Answer a free-form prompt directly."""
+        return self.query(prompt, max_tokens=500, temperature=0.0)
 
     def perform_calculation(self, instruction: str, data: str) -> str:
         """
