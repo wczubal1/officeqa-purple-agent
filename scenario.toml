@@ -1,0 +1,18 @@
+# Scenario configuration for manual assessment submission to AgentBeats
+
+[green_agent]
+# Your OfficeQA green agent ID - get this from agentbeats.dev/agentbeater/officeqa
+agentbeats_id = ""
+env = { OPENAI_API_KEY = "${OPENAI_API_KEY}" }
+
+[[participants]]
+# Your purple agent ID - get this after registering your agent on AgentBeats
+agentbeats_id = ""
+name = "officeqa-agent"
+env = { OPENAI_API_KEY = "${OPENAI_API_KEY}" }
+
+[config]
+# Configuration parameters for the OfficeQA benchmark
+# Adjust these based on the benchmark's requirements
+domain = "finance"
+num_tasks = 10

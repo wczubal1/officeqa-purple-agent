@@ -1,0 +1,24 @@
+
+Example Assessment Response:
+{
+  "status": "success",
+  "participant_id": "officeqa-purple-agent",
+  "results": [
+    {
+      "task_id": "example_1",
+      "answer": "The total amount mentioned in the Treasury bulletin is $1.2 trillion.",
+      "confidence": 0.555,
+      "reasoning": "Processed 1 document(s) for extraction task"
+    },
+    {
+      "task_id": "example_2",
+      "answer": "The average of the values 100, 200, 300 is calculated by adding all the values and then dividing the result by the number of values.\n\nSo, (100 + 200 + 300) / 3 = 600 / 3 = 200. \n\nTherefore, the average of the values 100, 200, 300 is 200.",
+      "confidence": 0.75,
+      "reasoning": "Processed 1 document(s) for calculation task"
+    }
+  ]
+}
+
+Original Questions:
+Task 1: What is the total amount mentioned in the Treasury bulletin?
+Task 2: Calculate the average of the following values: 100, 200, 300
