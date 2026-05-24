@@ -1,68 +1,28 @@
 {
+  "manifest_version": "0.1.0",
   "name": "OfficeQA Purple Agent",
   "version": "1.0.0",
   "description": "Purple agent (competitor) for the OfficeQA benchmark on AgentBeats. Evaluates end-to-end grounded reasoning over U.S. Treasury Bulletins through document retrieval, value extraction from tables and figures, and multi-step quantitative computations.",
   "author": "witold",
-  "docker": {
+  "program": {
     "image": "ghcr.io/wczubal1/officeqa-purple-agent:latest",
-    "entrypoint": ["python", "-m", "src.agent.main"]
+    "entrypoint": "python -m src.agent.main"
   },
-  "inputs": {
-    "OPENAI_API_KEY": {
-      "type": "secret",
-      "description": "OpenAI API key for accessing GPT models"
-    },
-    "AGENT_LOG_LEVEL": {
-      "type": "string",
-      "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
-      "default": "INFO"
+  "slots": {
+    "openai": {
+      "kind": "secret",
+      "description": "OpenAI API key"
     }
   },
-  "a2a_export": {
-    "protocol": "A2A",
-    "version": "1.0.0",
-    "interface": {
-      "method": "stdio",
-      "format": "json"
-    },
-    "input_schema": {
-      "type": "object",
-      "properties": {
-        "tasks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "question": { "type": "string" },
-              "documents": { "type": "array", "items": { "type": "string" } },
-              "type": { "type": "string" }
-            },
-            "required": ["id", "question"]
-          }
-        }
-      },
-      "required": ["tasks"]
-    },
-    "output_schema": {
-      "type": "object",
-      "properties": {
-        "status": { "type": "string" },
-        "participant_id": { "type": "string" },
-        "results": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "task_id": { "type": "string" },
-              "answer": { "type": "string" },
-              "confidence": { "type": "number" },
-              "reasoning": { "type": "string" }
-            }
-          }
-        }
-      }
+  "provides": {
+    "a2a": {
+      "kind": "a2a",
+      "protocol": "A2A",
+      "version": "1.0.0"
     }
+  },
+  "exports": {
+    "a2a": "a2a"
   },
   "capabilities": {
     "document_retrieval": true,
