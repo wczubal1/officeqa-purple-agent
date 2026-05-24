@@ -1,11 +1,42 @@
 {
   "manifest_version": "0.1.0",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "openai_api_key": {
+        "type": "string",
+        "secret": true
+      },
+      "agent_log_level": {
+        "type": "string",
+        "default": "INFO"
+      }
+    },
+    "required": [
+      "openai_api_key"
+    ],
+    "additionalProperties": false
+  },
   "program": {
-    "image": "ghcr.io/wczubal1/officeqa-purple-agent:latest"
+    "image": "ghcr.io/wczubal1/officeqa-purple-agent:latest",
+    "entrypoint": "python -m src.agent.main",
+    "env": {
+      "OPENAI_API_KEY": "${config.openai_api_key}",
+      "AGENT_LOG_LEVEL": "${config.agent_log_level}"
+    },
+    "network": {
+      "endpoints": [
+        {
+          "name": "a2a_endpoint",
+          "port": 9009
+        }
+      ]
+    }
   },
   "provides": {
     "a2a": {
-      "kind": "a2a"
+      "kind": "a2a",
+      "endpoint": "a2a_endpoint"
     }
   },
   "exports": {
@@ -17,5 +48,4 @@
     "description": "Purple agent for OfficeQA benchmark"
   }
 }
-
 

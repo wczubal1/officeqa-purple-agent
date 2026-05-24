@@ -14,6 +14,5 @@ COPY src/ ./src/
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Run the agent
-# Uses stdin/stdout for A2A protocol communication
-CMD ["python", "-m", "src.agent.main"]
+# Run the agent as an HTTP A2A server.
+ENTRYPOINT ["python", "-m", "src.agent.main"]

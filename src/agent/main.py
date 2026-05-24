@@ -1,151 +1,196 @@
-"""Main entry point for the OfficeQA purple agent."""
+"""HTTP A2A server entrypoint for the OfficeQA purple agent."""
 
-import os
+import argparse
 import json
 import logging
-import sys
-from typing import Optional
+import os
+from typing import Any
+
+import uvicorn
+from a2a.server.agent_execution import AgentExecutor, RequestContext
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.events import EventQueue
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore, TaskUpdater
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill, Part, Task, TaskState, TextPart
+from a2a.utils import get_message_text, new_agent_text_message, new_task
 from dotenv import load_dotenv
 
 from .llm_client import LLMClient
 from .officeqa_agent import OfficeQAAgent
 
-# Load environment variables
 load_dotenv()
 
-# Configure logging to use stderr, not stdout
 logging.basicConfig(
     level=os.getenv("AGENT_LOG_LEVEL", "INFO"),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    stream=sys.stderr,
 )
 logger = logging.getLogger(__name__)
 
+TERMINAL_STATES = {
+    TaskState.completed,
+    TaskState.canceled,
+    TaskState.failed,
+    TaskState.rejected,
+}
 
-class AgentServer:
-    """Server for the OfficeQA purple agent following A2A protocol."""
 
-    def __init__(self):
-        """Initialize the agent server."""
-        self.llm_client = LLMClient()
-        self.agent = OfficeQAAgent(self.llm_client)
-        logger.info("OfficeQA Purple Agent initialized")
+class OfficeQAExecutor(AgentExecutor):
+    """A2A executor that turns incoming text into OfficeQA responses."""
 
-    def handle_assessment_request(self, request: dict) -> dict:
-        """
-        Handle an assessment request from the green agent.
+    def __init__(self) -> None:
+        self.agent = OfficeQAAgent(LLMClient())
 
-        Args:
-            request: Assessment request in A2A format
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        message = context.message
+        if not message:
+            raise ValueError("Missing message in request")
 
-        Returns:
-            Assessment result in A2A format
-        """
-        logger.info("Received assessment request")
+        task = self._ensure_task(context.current_task, message)
+        await event_queue.enqueue_event(task)
+
+        updater = TaskUpdater(event_queue, task.id, task.context_id)
+        await updater.start_work()
 
         try:
-            # Extract tasks from request
-            tasks = request.get("tasks", [])
-
-            results = []
-            for task in tasks:
-                task_result = self.agent.process_task(
-                    task_id=task.get("id", "unknown"),
-                    question=task.get("question", ""),
-                    documents=task.get("documents", []),
-                    task_type=task.get("type", "qa"),
+            response_text = self._handle_message(get_message_text(message) or "")
+            await updater.add_artifact(
+                parts=[Part(root=TextPart(text=response_text))],
+                name="officeqa-response",
+            )
+            await updater.complete()
+        except Exception as exc:
+            logger.exception("Task failed")
+            await updater.failed(
+                new_agent_text_message(
+                    f"Agent error: {exc}",
+                    context_id=task.context_id,
+                    task_id=task.id,
                 )
-                results.append(task_result)
+            )
 
-            response = {
-                "status": "success",
-                "participant_id": os.getenv("PARTICIPANT_ID", "officeqa-purple-agent"),
-                "results": self.agent.get_results(),
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
+        raise NotImplementedError("Cancel is not supported")
+
+    def _ensure_task(self, task: Task | None, message: Any) -> Task:
+        if task and task.status.state in TERMINAL_STATES:
+            raise ValueError(f"Task {task.id} already completed")
+        if task:
+            return task
+        return new_task(message)
+
+    def _handle_message(self, raw_text: str) -> str:
+        raw_text = raw_text.strip()
+        if not raw_text:
+            raise ValueError("Empty request")
+
+        try:
+            request = json.loads(raw_text)
+        except json.JSONDecodeError:
+            answer = self.agent.process_task(
+                task_id="message",
+                question=raw_text,
+                documents=[],
+                task_type="qa",
+            )
+            return answer.answer
+
+        if isinstance(request, dict) and "tasks" in request:
+            return json.dumps(self._handle_assessment_request(request))
+
+        answer = self.agent.process_task(
+            task_id=request.get("id", "message") if isinstance(request, dict) else "message",
+            question=request.get("question", raw_text) if isinstance(request, dict) else raw_text,
+            documents=request.get("documents", []) if isinstance(request, dict) else [],
+            task_type=request.get("type", "qa") if isinstance(request, dict) else "qa",
+        )
+        return json.dumps(
+            {
+                "task_id": answer.task_id,
+                "answer": answer.answer,
+                "confidence": answer.confidence,
+                "reasoning": answer.reasoning,
             }
+        )
 
-            logger.info(f"Assessment complete. Processed {len(results)} tasks.")
-            return response
+    def _handle_assessment_request(self, request: dict[str, Any]) -> dict[str, Any]:
+        tasks = request.get("tasks", [])
+        self.agent.clear_results()
 
-        except Exception as e:
-            logger.error(f"Error handling assessment request: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-            }
+        for task in tasks:
+            self.agent.process_task(
+                task_id=task.get("id", "unknown"),
+                question=task.get("question", ""),
+                documents=task.get("documents", []),
+                task_type=task.get("type", "qa"),
+            )
 
-    def run_example(self) -> None:
-        """Run an example assessment for testing."""
-        logger.info("Running example assessment...")
-
-        example_request = {
-            "tasks": [
-                {
-                    "id": "example_1",
-                    "question": "What is the total amount mentioned in the Treasury bulletin?",
-                    "documents": [
-                        "The U.S. Treasury reported a total of $1.2 trillion in outstanding debt as of Q1 2024."
-                    ],
-                    "type": "extraction",
-                },
-                {
-                    "id": "example_2",
-                    "question": "Calculate the average of the following values: 100, 200, 300",
-                    "documents": ["Values: 100, 200, 300"],
-                    "type": "calculation",
-                },
-            ]
+        return {
+            "status": "success",
+            "participant_id": os.getenv("PARTICIPANT_ID", "officeqa-purple-agent"),
+            "results": self.agent.get_results(),
         }
 
-        response = self.handle_assessment_request(example_request)
-        print("\nExample Input Questions:")
-        for task in example_request["tasks"]:
-            print(f"  Task {task['id']}: {task['question']}")
-        print("\nExample Assessment Response:")
-        print(json.dumps(response, indent=2))
+
+def build_agent_card(card_url: str) -> AgentCard:
+    skill = AgentSkill(
+        id="officeqa",
+        name="OfficeQA",
+        description="Answers OfficeQA tasks using document-grounded reasoning.",
+        tags=["officeqa", "finance", "qa"],
+        examples=[],
+    )
+    return AgentCard(
+        name="OfficeQA Purple Agent",
+        description="Purple agent for the OfficeQA benchmark.",
+        url=card_url,
+        version="1.0.0",
+        default_input_modes=["text"],
+        default_output_modes=["text"],
+        capabilities=AgentCapabilities(streaming=False),
+        skills=[skill],
+    )
 
 
-def main():
-    """Main entry point."""
-    logger.info("Starting OfficeQA Purple Agent")
-
-    server = AgentServer()
-
-    # Check if running in example mode
-    if "--example" in sys.argv or os.getenv("RUN_EXAMPLE") == "true":
-        server.run_example()
-    else:
-        # A2A protocol mode: read one request from stdin, output response to stdout, exit
-        logger.info("Agent ready to receive assessment requests")
-        
-        try:
-            # Read one JSON object from stdin
-            input_line = sys.stdin.readline()
-            if input_line.strip():
-                try:
-                    request = json.loads(input_line)
-                    response = server.handle_assessment_request(request)
-                    print(json.dumps(response))
-                    sys.stdout.flush()
-                except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON: {e}")
-                    error_response = {
-                        "status": "error",
-                        "error": f"Invalid JSON input: {e}"
-                    }
-                    print(json.dumps(error_response))
-                    sys.stdout.flush()
-                    sys.exit(1)
-            else:
-                logger.error("No input received on stdin")
-                sys.exit(1)
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}", exc_info=True)
-            error_response = {
-                "status": "error",
-                "error": str(e)
+def run_example() -> None:
+    executor = OfficeQAExecutor()
+    example_request = {
+        "tasks": [
+            {
+                "id": "example_1",
+                "question": "What is the total amount mentioned in the Treasury bulletin?",
+                "documents": [
+                    "The U.S. Treasury reported a total of $1.2 trillion in outstanding debt as of Q1 2024."
+                ],
+                "type": "extraction",
             }
-            print(json.dumps(error_response))
-            sys.exit(1)
+        ]
+    }
+    print(json.dumps(executor._handle_assessment_request(example_request), indent=2))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run the OfficeQA A2A server.")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind the server")
+    parser.add_argument("--port", default=9009, type=int, help="Port to bind the server")
+    parser.add_argument("--card-url", help="URL to advertise in the agent card")
+    parser.add_argument("--example", action="store_true", help="Run a local example and exit")
+    args = parser.parse_args()
+
+    if args.example or os.getenv("RUN_EXAMPLE") == "true":
+        run_example()
+        return
+
+    card_url = args.card_url or f"http://{args.host}:{args.port}/"
+    request_handler = DefaultRequestHandler(
+        agent_executor=OfficeQAExecutor(),
+        task_store=InMemoryTaskStore(),
+    )
+    app = A2AStarletteApplication(
+        agent_card=build_agent_card(card_url),
+        http_handler=request_handler,
+    )
+    uvicorn.run(app.build(), host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
