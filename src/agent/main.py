@@ -28,6 +28,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _preview(text: str, limit: int = 500) -> str:
+    """Return a single-line preview for logs."""
+    collapsed = " ".join(text.split())
+    if len(collapsed) <= limit:
+        return collapsed
+    return collapsed[:limit] + "...[truncated]"
+
+
 class OfficeQAExecutor(AgentExecutor):
     """A2A executor that turns incoming text into OfficeQA responses."""
 
@@ -39,7 +47,9 @@ class OfficeQAExecutor(AgentExecutor):
         if not user_input.strip():
             raise ValueError("Empty request")
 
+        logger.info("Received request preview: %s", _preview(user_input))
         response_text = self._handle_message(user_input)
+        logger.info("Returning response preview: %s", _preview(response_text))
         await event_queue.enqueue_event(
             new_agent_text_message(
                 response_text,
