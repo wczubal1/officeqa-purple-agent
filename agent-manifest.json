@@ -1,19 +1,12 @@
 {
   "manifest_version": "0.1.0",
-  "name": "OfficeQA Purple Agent",
-  "version": "1.0.0",
-  "description": "Purple agent (competitor) for the OfficeQA benchmark on AgentBeats. Evaluates end-to-end grounded reasoning over U.S. Treasury Bulletins through document retrieval, value extraction from tables and figures, and multi-step quantitative computations.",
-  "author": "witold",
   "program": {
-    "image": "ghcr.io/wczubal1/officeqa-purple-agent:latest",
-    "env": {
-      "OPENAI_API_KEY": "${slots.openai_api_key}"
-    }
+    "image": "ghcr.io/wczubal1/officeqa-purple-agent:latest"
   },
   "slots": {
     "openai_api_key": {
       "kind": "secret",
-      "description": "OpenAI API key for GPT access"
+      "description": "OpenAI API key"
     }
   },
   "provides": {
@@ -26,12 +19,11 @@
   "exports": {
     "a2a": "a2a"
   },
-  "capabilities": {
-    "document_retrieval": true,
-    "value_extraction": true,
-    "quantitative_reasoning": true,
-    "multi_step_computation": true
-  },
-  "benchmark": "OfficeQA",
-  "tasks": 246
+  "metadata": {
+    "name": "OfficeQA Purple Agent",
+    "version": "1.0.0",
+    "description": "Purple agent for OfficeQA benchmark",
+    "author": "witold"
+  }
 }
+
