@@ -114,32 +114,37 @@ def main():
     if "--example" in sys.argv or os.getenv("RUN_EXAMPLE") == "true":
         server.run_example()
     else:
-        # A2A protocol mode: read from stdin, write to stdout
+        # A2A protocol mode: read one request from stdin, output response to stdout, exit
         logger.info("Agent ready to receive assessment requests")
-        logger.info("Run with --example flag to test")
         
-        # Listen for A2A protocol requests on stdin
         try:
-            for line in sys.stdin:
-                if line.strip():
-                    try:
-                        request = json.loads(line)
-                        response = server.handle_assessment_request(request)
-                        print(json.dumps(response))
-                        sys.stdout.flush()
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Invalid JSON: {e}")
-                        error_response = {
-                            "status": "error",
-                            "error": f"Invalid JSON input: {e}"
-                        }
-                        print(json.dumps(error_response))
-                        sys.stdout.flush()
-        except KeyboardInterrupt:
-            logger.info("Agent shutdown requested")
-            sys.exit(0)
+            # Read one JSON object from stdin
+            input_line = sys.stdin.readline()
+            if input_line.strip():
+                try:
+                    request = json.loads(input_line)
+                    response = server.handle_assessment_request(request)
+                    print(json.dumps(response))
+                    sys.stdout.flush()
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON: {e}")
+                    error_response = {
+                        "status": "error",
+                        "error": f"Invalid JSON input: {e}"
+                    }
+                    print(json.dumps(error_response))
+                    sys.stdout.flush()
+                    sys.exit(1)
+            else:
+                logger.error("No input received on stdin")
+                sys.exit(1)
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+            logger.error(f"Unexpected error: {e}", exc_info=True)
+            error_response = {
+                "status": "error",
+                "error": str(e)
+            }
+            print(json.dumps(error_response))
             sys.exit(1)
 
 
