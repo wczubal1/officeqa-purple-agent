@@ -113,9 +113,33 @@ def main():
     if "--example" in sys.argv or os.getenv("RUN_EXAMPLE") == "true":
         server.run_example()
     else:
-        # In production, this would integrate with the actual assessment framework
+        # A2A protocol mode: read from stdin, write to stdout
         logger.info("Agent ready to receive assessment requests")
         logger.info("Run with --example flag to test")
+        
+        # Listen for A2A protocol requests on stdin
+        try:
+            for line in sys.stdin:
+                if line.strip():
+                    try:
+                        request = json.loads(line)
+                        response = server.handle_assessment_request(request)
+                        print(json.dumps(response))
+                        sys.stdout.flush()
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Invalid JSON: {e}")
+                        error_response = {
+                            "status": "error",
+                            "error": f"Invalid JSON input: {e}"
+                        }
+                        print(json.dumps(error_response))
+                        sys.stdout.flush()
+        except KeyboardInterrupt:
+            logger.info("Agent shutdown requested")
+            sys.exit(0)
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
