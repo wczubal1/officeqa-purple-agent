@@ -3,17 +3,9 @@
   "program": {
     "image": "ghcr.io/wczubal1/officeqa-purple-agent:latest"
   },
-  "slots": {
-    "openai_api_key": {
-      "kind": "secret",
-      "description": "OpenAI API key"
-    }
-  },
   "provides": {
     "a2a": {
-      "kind": "a2a",
-      "protocol": "A2A",
-      "version": "1.0.0"
+      "kind": "a2a"
     }
   },
   "exports": {
@@ -22,8 +14,8 @@
   "metadata": {
     "name": "OfficeQA Purple Agent",
     "version": "1.0.0",
-    "description": "Purple agent for OfficeQA benchmark",
-    "author": "witold"
+    "description": "Purple agent for OfficeQA benchmark"
   }
 }
+
 
