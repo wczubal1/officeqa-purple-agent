@@ -6,7 +6,7 @@ import pytest
 from a2a.utils import get_message_text
 
 from src.agent.llm_client import LLMClient
-from src.agent.main import OfficeQAExecutor
+from src.agent.main import OfficeQAExecutor, _wrap_final_answer
 from src.agent.officeqa_agent import OfficeQAAgent
 
 
@@ -171,4 +171,13 @@ class TestOfficeQAExecutor:
 
         event_queue.enqueue_event.assert_called_once()
         message = event_queue.enqueue_event.call_args.args[0]
-        assert get_message_text(message) == "Plain text answer"
+        assert get_message_text(message) == "<FINAL_ANSWER>Plain text answer</FINAL_ANSWER>"
+
+
+class TestFinalAnswerFormatting:
+    def test_wrap_final_answer_adds_tags(self):
+        assert _wrap_final_answer("42") == "<FINAL_ANSWER>42</FINAL_ANSWER>"
+
+    def test_wrap_final_answer_preserves_existing_tags(self):
+        wrapped = "<FINAL_ANSWER>42</FINAL_ANSWER>"
+        assert _wrap_final_answer(wrapped) == wrapped

@@ -28,12 +28,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+FINAL_ANSWER_OPEN = "<FINAL_ANSWER>"
+FINAL_ANSWER_CLOSE = "</FINAL_ANSWER>"
+
+
 def _preview(text: str, limit: int = 500) -> str:
     """Return a single-line preview for logs."""
     collapsed = " ".join(text.split())
     if len(collapsed) <= limit:
         return collapsed
     return collapsed[:limit] + "...[truncated]"
+
+
+def _wrap_final_answer(text: str) -> str:
+    """Wrap outward responses in the format expected by the scorer."""
+    answer = text.strip()
+    if not answer:
+        answer = "Unable to process"
+    if answer.startswith(FINAL_ANSWER_OPEN) and answer.endswith(FINAL_ANSWER_CLOSE):
+        return answer
+    return f"{FINAL_ANSWER_OPEN}{answer}{FINAL_ANSWER_CLOSE}"
 
 
 class OfficeQAExecutor(AgentExecutor):
@@ -48,7 +62,7 @@ class OfficeQAExecutor(AgentExecutor):
             raise ValueError("Empty request")
 
         logger.info("Received request preview: %s", _preview(user_input))
-        response_text = self._handle_message(user_input)
+        response_text = _wrap_final_answer(self._handle_message(user_input))
         logger.info("Returning response preview: %s", _preview(response_text))
         await event_queue.enqueue_event(
             new_agent_text_message(
