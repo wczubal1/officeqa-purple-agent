@@ -1,10 +1,20 @@
 {
   "manifest_version": "1.0.0",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "openai_api_key": {
+        "type": "string",
+        "secret": true
+      }
+    },
+    "required": ["openai_api_key"]
+  },
   "program": {
     "image": "ghcr.io/wczubal1/tau2-purple-agent:latest",
     "entrypoint": "python -m src.agent.server",
     "env": {
-      "OPENAI_API_KEY": "${secrets.OPENAI_API_KEY}",
+      "OPENAI_API_KEY": "${config.openai_api_key}",
       "TAU2_AGENT_LLM": "openai/gpt-4.1"
     },
     "network": {
