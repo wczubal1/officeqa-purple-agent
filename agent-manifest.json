@@ -1,34 +1,27 @@
 {
-  "manifest_version": "0.1.0",
+  "manifest_version": "1.0.0",
   "config_schema": {
     "type": "object",
     "properties": {
       "openai_api_key": {
         "type": "string",
         "secret": true
-      },
-      "agent_log_level": {
-        "type": "string",
-        "default": "INFO"
       }
     },
-    "required": [
-      "openai_api_key"
-    ],
-    "additionalProperties": false
+    "required": ["openai_api_key"]
   },
   "program": {
-    "image": "ghcr.io/wczubal1/officeqa-purple-agent:latest",
-    "entrypoint": "python -m src.agent.main",
+    "image": "ghcr.io/wczubal1/tau2-purple-agent:latest",
+    "entrypoint": "python -m src.agent.server",
     "env": {
       "OPENAI_API_KEY": "${config.openai_api_key}",
-      "AGENT_LOG_LEVEL": "${config.agent_log_level}"
+      "TAU2_AGENT_LLM": "openai/gpt-4.1"
     },
     "network": {
       "endpoints": [
         {
           "name": "a2a_endpoint",
-          "port": 9009
+          "port": 9019
         }
       ]
     }
@@ -43,9 +36,8 @@
     "a2a": "a2a"
   },
   "metadata": {
-    "name": "OfficeQA Purple Agent",
+    "name": "Tau2 Purple Agent",
     "version": "1.0.0",
-    "description": "Purple agent for OfficeQA benchmark"
+    "description": "Purple agent for tau2-bench customer service evaluation"
   }
 }
-
