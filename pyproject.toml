@@ -1,18 +1,20 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-name = "officeqa-purple-agent"
-version = "0.1.0"
-description = "Purple agent for OfficeQA benchmark on AgentBeats"
-requires-python = ">=3.10"
+name = "tau2-purple-agent"
+version = "1.0.0"
+description = "Purple agent for tau2-bench benchmark on AgentBeats"
+readme = "README.md"
+requires-python = ">=3.11"
 dependencies = [
-    "openai>=1.0.0",
-    "pydantic>=2.0",
-    "requests>=2.31.0",
-    "python-dotenv>=1.0.0",
-    "agentic-ai>=0.1.0",
+    "a2a-sdk[http-server]>=0.3.20",
+    "httpx>=0.28.1",
+    "pydantic>=2.11.9",
+    "python-dotenv>=1.1.1",
+    "uvicorn>=0.38.0",
+    "litellm>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -21,5 +23,8 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "black>=23.0",
     "ruff>=0.1.0",
-    "mypy>=1.0",
+    "mypy>=1.18.1",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

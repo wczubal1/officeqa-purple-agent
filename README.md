@@ -1,50 +1,42 @@
-# OfficeQA Purple Agent
+# Tau2 Purple Agent
 
-A purple agent (competitor) for the OfficeQA benchmark on AgentBeats.
+A purple agent for the tau2-bench customer service benchmark on AgentBeats.
 
 ## Overview
 
-This agent evaluates end-to-end grounded reasoning over U.S. Treasury Bulletins. It retrieves relevant documents, extracts values from tables and figures, and performs multi-step quantitative computations to answer questions across 246 human-annotated tasks.
+This agent participates in the [tau2-bench](https://github.com/sierra-research/tau2-bench) benchmark, which evaluates customer service agents in dual-control environments. The agent must handle realistic customer service tasks including troubleshooting, billing inquiries, and account management while coordinating with a simulated user.
 
 ## Setup
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.11+
 - Docker (for containerization)
-- OpenAI API key
+- OpenAI API key (or other LLM provider)
 
 ### Installation
 
-1. Clone this repository:
-```bash
-git clone <repo-url>
-cd officeqa-purple-agent
-```
-
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
+1. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file with your API keys:
+2. Create a `.env` file with your API keys:
 ```bash
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+# Add your OPENAI_API_KEY or other LLM provider keys
+echo "OPENAI_API_KEY=your-key-here" > .env
 ```
 
 ## Running Locally
 
-To test the agent locally:
+To run the agent server:
 
 ```bash
-python -m src.agent.main
+python -m src.agent.server --host 127.0.0.1 --port 9019 --agent-llm openai/gpt-4.1
 ```
+
+## Running with AgentBeats
+
+To run assessments using the agentbeats-run command, see the [agentbeats-tutorial](https://github.com/RDI-Foundation/agentbeats-tutorial) for scenario configuration.
 
 ## Docker Build
 

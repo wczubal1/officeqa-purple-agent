@@ -15,4 +15,4 @@ COPY src/ ./src/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Run the agent as an HTTP A2A server.
-ENTRYPOINT ["python", "-m", "src.agent.main"]
+ENTRYPOINT ["python", "-m", "src.agent.server"]
