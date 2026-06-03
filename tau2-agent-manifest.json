@@ -12,7 +12,7 @@
   },
   "program": {
     "image": "ghcr.io/wczubal1/tau2-purple-agent:latest",
-    "entrypoint": "python -m src.agent.server",
+    "entrypoint": "python -m src.agent",
     "env": {
       "OPENAI_API_KEY": "${config.openai_api_key}",
       "TAU2_AGENT_LLM": "openai/gpt-4.1"

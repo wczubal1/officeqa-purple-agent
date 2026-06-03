@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 COPY src/ ./src/
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with verbose output for debugging
+RUN pip install --no-cache-dir -v -r requirements.txt
 
 # Run the agent as an HTTP A2A server.
 ENTRYPOINT ["python", "-m", "src.agent"]
