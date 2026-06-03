@@ -11,7 +11,11 @@ from a2a.types import (
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
 
-from .agent import Agent
+# Handle relative and absolute imports
+try:
+    from .agent import Agent
+except ImportError:
+    from agent import Agent
 
 
 TERMINAL_STATES = {

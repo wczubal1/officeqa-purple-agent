@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import sys
 
 import uvicorn
 from a2a.server.apps import A2AStarletteApplication
@@ -13,12 +14,16 @@ from a2a.types import (
     AgentSkill,
 )
 
-from .executor import Executor
+# Handle relative and absolute imports
+try:
+    from .executor import Executor
+except ImportError:
+    from executor import Executor
 
 
 def main():
     parser = argparse.ArgumentParser(description="Run the tau2 agent (purple agent).")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind the server")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server")
     parser.add_argument("--port", type=int, default=9019, help="Port to bind the server")
     parser.add_argument("--card-url", type=str, help="URL to advertise in the agent card")
     parser.add_argument("--agent-llm", type=str, default="openai/gpt-4.1", help="LLM model to use")
