@@ -33,11 +33,5 @@
     }
   },
   "exports": {
-    "a2a": "a2a"
-  },
-  "metadata": {
-    "name": "Tau2 Purple Agent",
-    "version": "1.0.0",
-    "description": "Purple agent for tau2-bench customer service evaluation"
-  }
+    "a2a": "a2a"}
 }
